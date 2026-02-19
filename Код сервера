@@ -28,7 +28,7 @@ serv = Flask(__name__)
 def cg():
  global tempar,graph,timp,last
  curtime = time.perf_counter()
- if (curtime - last >= 1):
+ if (curtime - last >= 3600):
         last = curtime
         timp.append(tempar)
  if len(timp) > 73:
@@ -52,7 +52,7 @@ def cg():
 def co2g():
  global graph2,co2,oxid2,lat
  curtime = time.perf_counter()
- if (curtime - lat >= 1):
+ if (curtime - lat >= 3600):
         lat = curtime
         oxid2.append(co2)
  if len(oxid2) > 73:
