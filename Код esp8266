@@ -1,0 +1,114 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <ArduinoJson.h>
+#include <DHT.h>
+#include <MQ135.h>   
+
+const char* ssid = "z";
+const char* password = "z";
+const char* serverIP = "z";
+const int serverPort = z;
+DHT dht(D5, DHT11); 
+MQ135 gasSensor = MQ135(A0);
+String command = "1";
+int a = 0;
+int f = 0;
+WiFiClient wifiClient;
+void sendData() {
+  float temperature = dht.readTemperature();
+  int humidity = dht.readHumidity();
+  float ppm = gasSensor.getPPM();
+  if (WiFi.status() != WL_CONNECTED) return;
+  HTTPClient http;
+  String url = "http://";
+  url += serverIP;
+  url += ":";
+  url += serverPort;
+  url += "/data";
+  http.begin(wifiClient, url);
+  http.addHeader("Content-Type", "application/json");
+  StaticJsonDocument<512> doc;
+  doc["temperature"] = temperature;
+  doc["humidity"] = humidity;
+  doc["ppm"] = ppm;
+  String jsonString;
+  serializeJson(doc, jsonString);
+  int httpCode = http.POST(jsonString);
+  http.end();
+}
+void comrade() {
+  HTTPClient http;
+  String url = "http://" + String(serverIP) + ":" + String(serverPort) + "/get_command";
+  http.begin(wifiClient, url);
+  int httpCode = http.GET();
+  String response = http.getString();
+  StaticJsonDocument<200> doc;
+  deserializeJson(doc, response);
+  command = doc["command"].as<String>();
+}
+
+void make() {
+int humidity = dht.readHumidity();
+float ppm = gasSensor.getPPM();
+if (command == "none") {
+  digitalWrite(D6, LOW);
+  f = 0;
+  }
+  if (command == "yes"){
+  digitalWrite(D6, HIGH);
+  f = 0;
+  }
+  if (command == "co2norma"){
+  f = 1;
+  }
+  if ((f == 1) && (ppm > 500)){
+  digitalWrite(D6, HIGH);
+  }
+ if (command == "v25") {
+  a = 1;
+  }
+ if (command == "v50"){
+  a = 2;
+  }
+ if (command == "v75"){
+  a = 3;
+  }
+ if (command == "v"){
+  a = 4;
+  }
+ if (command == "nv"){
+  a = 0;
+  }
+ if ((a == 1 && humidity < 25) || (a == 2 && humidity < 50) || (a == 3 && humidity < 75) || a==4){
+  digitalWrite(D7, HIGH);
+ }
+ if (a == 0){
+  digitalWrite(D7, LOW);
+ }
+}
+void setup() {
+  pinMode(D5, OUTPUT);
+  dht.begin();
+  WiFi.begin(ssid, password);
+  pinMode(D6, OUTPUT);
+  pinMode(D7, OUTPUT);
+  pinMode(D8, OUTPUT);
+
+}
+  
+
+void loop() {
+  HTTPClient http;
+  sendData();
+  comrade();
+  make();
+  delay(1000);
+  float ppm = gasSensor.getPPM();
+  if (ppm > 800) {
+  digitalWrite(D8, HIGH); 
+  }
+  else if(ppm < 800) {
+  digitalWrite(D8, LOW); 
+  }
+
+}
