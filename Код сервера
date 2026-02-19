@@ -1,0 +1,157 @@
+from operator import __neg__
+from flask import Flask, request, jsonify
+from datetime import datetime
+import telebot;
+import pandas as pd
+import threading
+import time
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import array
+from io import BytesIO
+from telebot import types
+bot = telebot.TeleBot('код бота');
+temp = "Нет данных"
+hump = "Нет данных"
+ppm = "Нет данных"
+command = "нет"
+tempar = 0
+graph = None
+graph2 = None
+timp = array.array('d',[])
+oxid2 = array.array('d',[])
+last = 10
+lat = 10
+co2 = 0
+serv = Flask(__name__)
+def cg():
+ global tempar,graph,timp,last
+ curtime = time.perf_counter()
+ if (curtime - last >= 1):
+        last = curtime
+        timp.append(tempar)
+ if len(timp) > 73:
+        timp = timp[-73:]
+    
+ if len(timp) >= 2:
+     to = list(range(len(timp)))
+     tor = len(timp)
+     plt.figure(figsize=(10, 6))
+     plt.plot(to, timp, marker='o', linestyle='-', color='r', label='Температура')
+     plt.title('График собранных данных за ' + str(tor - 1) + ' часов')
+     plt.xlabel('Часы')
+     plt.ylabel('Температура')
+     plt.legend()
+     plt.grid(True, alpha=0.3)
+     b = BytesIO()
+     plt.savefig(b, format='png')
+     b.seek(0)
+     plt.close()
+     graph = b
+def co2g():
+ global graph2,co2,oxid2,lat
+ curtime = time.perf_counter()
+ if (curtime - lat >= 1):
+        lat = curtime
+        oxid2.append(co2)
+ if len(oxid2) > 73:
+        oxid2 = oxid2[-73:]
+    
+ if len(oxid2) >= 2:
+     ter = list(range(len(oxid2)))
+     er = len(oxid2)
+     plt.figure(figsize=(10, 6))
+     plt.plot(ter, oxid2, marker='o', linestyle='-', color='b', label='ppm')
+     plt.title('График собранных данных за ' + str(er - 1) + ' часов')
+     plt.xlabel('Часы')
+     plt.ylabel('ppm')
+     plt.legend()
+     plt.grid(True, alpha=0.3)
+     a = BytesIO()
+     plt.savefig(a, format='png')
+     a.seek(0)
+     plt.close()
+     graph2 = a
+@serv.route('/data', methods=['POST'])
+def receive_data():
+    global temp
+    global hump
+    global ppm
+    global tempar
+    global co2
+    try:
+        data = request.get_json()
+        temp = str(data.get('temperature')) + "°C"
+        hump = str(data.get('humidity')) + "%"
+        ppm = str(data.get('ppm'))
+        tempar = float(data.get('temperature'))
+        co2 = int(data.get('ppm'))
+        cg()
+        co2g()
+        return jsonify({
+            "status": "success",
+            "message": "Data received",
+            "server_time": datetime.now().isoformat()
+        }), 200
+    finally:
+     print()
+
+def new_func():
+    client_ip = request.remote_addr
+
+@serv.route('/get_command', methods=['GET'])
+def get_command():                           
+    global command                            
+    cmd = command 
+    return jsonify({"command": cmd}) 
+command = "y"  
+
+
+@bot.message_handler(content_types=['text'])
+def get_text_messages(message):
+    global graph,graph2
+    if message.text == '/gt' and graph is not None:
+       bot.send_photo(message.from_user.id, photo=graph)
+    if message.text == '/gco' and graph2 is not None:
+       bot.send_photo(message.from_user.id, photo=graph2)
+    if message.text == '/temp':
+        bot.send_message(message.from_user.id, temp)
+    if message.text == '/hump':
+        bot.send_message(message.from_user.id, hump)
+    if message.text == '/ppm':
+        bot.send_message(message.from_user.id, ppm)
+    if message.text == '/h':                           
+     global command
+     command = "none"
+     bot.send_message(message.from_user.id, "команда получена")
+    if message.text == '/j':
+     command = "yes"
+     bot.send_message(message.from_user.id, "команда получена")
+    if message.text == '/v25':
+     command = "v25"
+     bot.send_message(message.from_user.id, "команда получена")
+    if message.text == '/v50':
+     command = "v50"
+     bot.send_message(message.from_user.id, "команда получена")
+    if message.text == '/v75':
+     command = "v75"
+     bot.send_message(message.from_user.id, "команда получена")
+    if message.text == '/v':
+     command = "v"
+     bot.send_message(message.from_user.id, "команда получена")
+    if message.text == '/nv':
+     command = "nv"
+     bot.send_message(message.from_user.id, "команда получена")
+    if message.text == '/co2normal':
+     command = "co2norma"
+     bot.send_message(message.from_user.id, "команда получена")
+def runbot():
+   bot.polling(none_stop=True, interval=0)
+                       
+
+if __name__ == '__main__':
+  bot_thread = threading.Thread(target=runbot)
+  bot_thread.daemon = True
+  bot_thread.start()
+  serv.run(host='x.x.x.x', port=x)
